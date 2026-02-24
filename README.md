@@ -17,7 +17,6 @@
 * **Backend**: FastAPI, SQLAlchemy (ORM), Jinja2 (SSR).
 * **База даних**: SQLite.
 * **Frontend**: HTML5, CSS3 (Bootstrap 5), JavaScript (Vanilla).
-* **Контроль версій**: Git (гілка `лаб1`).
 
 ## 📂 Структура проєкту
 * `main.py` — серверна логіка та маршрути.
