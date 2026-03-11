@@ -185,20 +185,40 @@
 
         {% if role == 'admin' %}
         <div class="admin-section shadow-sm">
-            <h3 class="h5 mb-3"><i class="bi bi-plus-circle"></i> Реєстрація нового платника</h3>
-            <form action="/taxpayer/add" method="post" class="row g-3">
-                <div class="col-md-6">
-                    <label class="form-label small fw-bold">Прізвище, Ім'я, По батькові</label>
-                    <input type="text" name="full_name" class="form-control" placeholder="Введіть ПІБ" required>
+            <div class="row">
+                <div class="col-md-7 border-end">
+                    <h3 class="h5 mb-3"><i class="bi bi-plus-circle"></i> Реєстрація нового платника</h3>
+                    <form action="/taxpayer/add" method="post" class="row g-3">
+                        <div class="col-md-7">
+                            <label class="form-label small fw-bold">Прізвище, Ім'я, По батькові</label>
+                            <input type="text" name="full_name" class="form-control" placeholder="Введіть ПІБ" required>
+                        </div>
+                        <div class="col-md-5">
+                            <label class="form-label small fw-bold">ІПН (10 цифр)</label>
+                            <input type="text" name="tin" class="form-control" placeholder="Напр. 1234567890" required pattern="\d{10}">
+                        </div>
+                        <div class="col-12">
+                            <button type="submit" class="btn btn-gov w-100">Додати платника</button>
+                        </div>
+                    </form>
                 </div>
-                <div class="col-md-4">
-                    <label class="form-label small fw-bold">ІПН (10 цифр)</label>
-                    <input type="text" name="tin" class="form-control" placeholder="Напр. 1234567890" required pattern="\d{10}">
+                <div class="col-md-5">
+                    <h3 class="h5 mb-3 text-success"><i class="bi bi-gear-fill"></i> Новий тип податку</h3>
+                    <form action="/tax-type/add" method="post" class="row g-3">
+                        <div class="col-md-7">
+                            <label class="form-label small fw-bold">Назва податку</label>
+                            <input type="text" name="name" class="form-control" placeholder="Наприклад: ПДВ" required>
+                        </div>
+                        <div class="col-md-5">
+                            <label class="form-label small fw-bold">Ставка (%)</label>
+                            <input type="number" step="0.1" name="rate" class="form-control" placeholder="20.0" required>
+                        </div>
+                        <div class="col-12">
+                            <button type="submit" class="btn btn-success w-100">Зберегти тип</button>
+                        </div>
+                    </form>
                 </div>
-                <div class="col-md-2 d-flex align-items-end">
-                    <button type="submit" class="btn btn-gov w-100">Додати</button>
-                </div>
-            </form>
+            </div>
         </div>
         {% endif %}
 
@@ -220,15 +240,22 @@
                     {% for record in tax_records %}
                     <tr>
                         <td>{{ record.id }}</td>
-                        <td>{{ record.taxpayer.full_name }}</td>
+                        <td>{{ record.taxpayer_name }}</td>
                         <td>
-                            <span class="badge bg-secondary">{{ record.tax_type.name }} ({{ record.tax_type.rate }}%)</span>
+                            <span class="badge bg-secondary">{{ record.tax_name }} ({{ record.tax_rate }}%)</span>
                         </td>
                         <td class="text-end fw-bold text-success">
                             {% if role == 'admin' %}
                             <form action="/tax-record/update/{{ record.id }}" method="post" class="d-inline-flex gap-1">
-                                <input type="number" name="amount" step="0.01" value="{{ record.amount }}" class="form-control form-control-sm text-end" style="width: 110px;">
-                                <button type="submit" class="btn btn-sm btn-primary" title="Зберегти зміни"><i class="bi bi-check-lg"></i></button>
+                                <input type="number"
+                                       name="amount"
+                                       step="0.01"
+                                       value="{{ record.amount }}"
+                                       class="form-control form-control-sm text-end"
+                                       style="width: 110px;">
+                                <button type="submit" class="btn btn-sm btn-primary" title="Зберегти">
+                                    <i class="bi bi-check-lg"></i>
+                                </button>
                             </form>
                             {% else %}
                                 {{ record.amount }} грн
@@ -291,23 +318,19 @@
 <script>
     document.getElementById('searchInput').addEventListener('keyup', function() {
         let filter = this.value.toLowerCase();
-        // Тепер ми вибираємо ВСІ рядки з обох таблиць на сторінці
         let rows = document.querySelectorAll('table tbody tr');
 
         rows.forEach(row => {
             let matchFound = false;
             let cells = row.querySelectorAll('td');
 
-            // Перевіряємо кожну комірку в рядку на збіг з фільтром
             cells.forEach(cell => {
                 let inputField = cell.querySelector('input');
                 let textToSearch = "";
 
                 if (inputField) {
-                    // Якщо в комірці інпут (режим адміна), беремо текст з нього
                     textToSearch = inputField.value.toLowerCase();
                 } else {
-                    // Інакше беремо звичайний текст комірки
                     if (!cell.dataset.original) cell.dataset.original = cell.innerHTML;
                     textToSearch = cell.dataset.original.toLowerCase();
                 }
@@ -317,7 +340,6 @@
                 }
             });
 
-            // Підсвічування логіки (тільки для текстових комірок без інпутів)
             if (filter !== "") {
                 cells.forEach(cell => {
                     if (!cell.querySelector('input') && cell.dataset.original) {
@@ -326,13 +348,11 @@
                     }
                 });
             } else {
-                // Скидання підсвічування
                 cells.forEach(cell => {
                     if (cell.dataset.original) cell.innerHTML = cell.dataset.original;
                 });
             }
 
-            // Показуємо рядок, якщо знайдено збіг або якщо пошук порожній
             row.style.display = (matchFound || filter === "") ? '' : 'none';
         });
     });
