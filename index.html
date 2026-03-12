@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Державна податкова служба — Облік платників</title>
+    <title>Державна податкова служба — MongoDB Edition</title>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
     <style>
@@ -27,30 +27,10 @@
             margin-bottom: 30px;
         }
 
-        .gov-brand {
-            display: flex;
-            align-items: center;
-            gap: 15px;
-        }
-
-        .gov-brand i {
-            font-size: 2.5rem;
-            color: var(--gov-gold);
-        }
-
-        .gov-title h1 {
-            font-size: 1.25rem;
-            margin: 0;
-            text-transform: uppercase;
-            font-weight: 700;
-            letter-spacing: 1px;
-        }
-
-        .gov-title p {
-            margin: 0;
-            font-size: 0.85rem;
-            opacity: 0.8;
-        }
+        .gov-brand { display: flex; align-items: center; gap: 15px; }
+        .gov-brand i { font-size: 2.5rem; color: var(--gov-gold); }
+        .gov-title h1 { font-size: 1.25rem; margin: 0; text-transform: uppercase; font-weight: 700; letter-spacing: 1px; }
+        .gov-title p { margin: 0; font-size: 0.85rem; opacity: 0.8; }
 
         .main-card {
             background: white;
@@ -67,21 +47,12 @@
             border-top: 2px solid var(--gov-blue);
         }
 
-        .badge-role {
-            font-size: 0.9rem;
-            padding: 8px 15px;
-            border-radius: 20px;
-        }
-
-        .btn-gov {
-            background-color: var(--gov-blue);
-            color: white;
-            border-radius: 0;
-        }
-
-        .btn-gov:hover {
-            background-color: #004080;
-            color: white;
+        /* Стиль для MongoDB ID */
+        .mono-id {
+            font-family: 'Courier New', Courier, monospace;
+            font-size: 0.8rem;
+            color: #666;
+            cursor: help;
         }
 
         .admin-section {
@@ -92,6 +63,9 @@
             margin-bottom: 40px;
         }
 
+        .btn-gov { background-color: var(--gov-blue); color: white; border-radius: 0; }
+        .btn-gov:hover { background-color: #004080; color: white; }
+
         .footer {
             margin-top: 50px;
             padding: 20px 0;
@@ -101,11 +75,7 @@
             text-align: center;
         }
 
-        mark {
-            padding: 0;
-            background-color: #fff3cd;
-            color: #856404;
-        }
+        mark { background-color: #fff3cd; color: #856404; padding: 0; }
     </style>
 </head>
 <body>
@@ -116,7 +86,7 @@
                 <i class="bi bi-bank"></i>
                 <div class="gov-title">
                     <h1>Державна податкова служба</h1>
-                    <p>Інформаційно-аналітична система «Облік платників»</p>
+                    <p>Система «Облік платників» (NoSQL MongoDB)</p>
                 </div>
             </div>
             <div>
@@ -128,8 +98,8 @@
 
     <div class="container">
         <div class="d-flex justify-content-between align-items-center mb-4">
-            <h2 class="h4"><i class="bi bi-people-fill"></i> Реєстр платників податків </h2>
-            <span class="badge {% if role == 'admin' %}bg-danger{% else %}bg-primary{% endif %} badge-role shadow-sm">
+            <h2 class="h4"><i class="bi bi-people-fill"></i> Реєстр платників </h2>
+            <span class="badge {% if role == 'admin' %}bg-danger{% else %}bg-primary{% endif %} p-2 shadow-sm">
                 <i class="bi bi-person-badge"></i> Роль: {{ 'Адміністратор' if role == 'admin' else 'Користувач' }}
             </span>
         </div>
@@ -137,7 +107,7 @@
         <div class="mb-4">
             <div class="input-group shadow-sm">
                 <span class="input-group-text bg-white"><i class="bi bi-search text-muted"></i></span>
-                <input type="text" id="searchInput" class="form-control" placeholder="Пошук платника за ПІБ або ІПН...">
+                <input type="text" id="searchInput" class="form-control" placeholder="Пошук за ПІБ або ІПН...">
             </div>
         </div>
 
@@ -145,16 +115,16 @@
             <table class="table table-hover align-middle" id="taxTable">
                 <thead>
                     <tr>
-                        <th style="width: 80px;">ID</th>
+                        <th style="width: 110px;">ID</th>
                         <th>ПІБ платника</th>
-                        <th style="width: 200px;">ІПН</th>
-                        {% if role == 'admin' %}<th style="width: 150px;" class="text-center">Операції</th>{% endif %}
+                        <th style="width: 150px;">ІПН</th>
+                        {% if role == 'admin' %}<th style="width: 120px;" class="text-center">Операції</th>{% endif %}
                     </tr>
                 </thead>
                 <tbody>
                     {% for tp in taxpayers %}
                     <tr>
-                        <td><strong>{{ tp.id }}</strong></td>
+                        <td><code class="mono-id" title="Повний ID: {{ tp.id }}">{{ tp.id[:8] }}...</code></td>
                         <td>
                             {% if role == 'admin' %}
                             <form action="/taxpayer/update/{{ tp.id }}" method="post" class="d-flex gap-2">
@@ -168,16 +138,14 @@
                         <td><code>{{ tp.tin }}</code></td>
                         {% if role == 'admin' %}
                         <td class="text-center">
-                            <a href="/taxpayer/delete/{{ tp.id }}" class="btn btn-sm btn-outline-danger" onclick="return confirm('Видалити платника та всі його нарахування?')">
+                            <a href="/taxpayer/delete/{{ tp.id }}" class="btn btn-sm btn-outline-danger" onclick="return confirm('Видалити платника та всі його нарахування з MongoDB?')">
                                 <i class="bi bi-trash"></i>
                             </a>
                         </td>
                         {% endif %}
                     </tr>
                     {% else %}
-                    <tr>
-                        <td colspan="4" class="text-center py-4 text-muted">Записи відсутні</td>
-                    </tr>
+                    <tr><td colspan="4" class="text-center py-4 text-muted">База MongoDB порожня</td></tr>
                     {% endfor %}
                 </tbody>
             </table>
@@ -187,34 +155,30 @@
         <div class="admin-section shadow-sm">
             <div class="row">
                 <div class="col-md-7 border-end">
-                    <h3 class="h5 mb-3"><i class="bi bi-plus-circle"></i> Реєстрація нового платника</h3>
+                    <h3 class="h5 mb-3"><i class="bi bi-plus-circle"></i> Новий платник</h3>
                     <form action="/taxpayer/add" method="post" class="row g-3">
                         <div class="col-md-7">
-                            <label class="form-label small fw-bold">Прізвище, Ім'я, По батькові</label>
-                            <input type="text" name="full_name" class="form-control" placeholder="Введіть ПІБ" required>
+                            <input type="text" name="full_name" class="form-control" placeholder="ПІБ" required>
                         </div>
                         <div class="col-md-5">
-                            <label class="form-label small fw-bold">ІПН (10 цифр)</label>
-                            <input type="text" name="tin" class="form-control" placeholder="Напр. 1234567890" required pattern="\d{10}">
+                            <input type="text" name="tin" class="form-control" placeholder="ІПН (10 цифр)" required pattern="\d{10}">
                         </div>
                         <div class="col-12">
-                            <button type="submit" class="btn btn-gov w-100">Додати платника</button>
+                            <button type="submit" class="btn btn-gov w-100">Додати в Колекцію</button>
                         </div>
                     </form>
                 </div>
                 <div class="col-md-5">
-                    <h3 class="h5 mb-3 text-success"><i class="bi bi-gear-fill"></i> Новий тип податку</h3>
+                    <h3 class="h5 mb-3 text-success"><i class="bi bi-gear-fill"></i> Тип податку</h3>
                     <form action="/tax-type/add" method="post" class="row g-3">
                         <div class="col-md-7">
-                            <label class="form-label small fw-bold">Назва податку</label>
-                            <input type="text" name="name" class="form-control" placeholder="Наприклад: ПДВ" required>
+                            <input type="text" name="name" class="form-control" placeholder="Назва (напр. ПДВ)" required>
                         </div>
                         <div class="col-md-5">
-                            <label class="form-label small fw-bold">Ставка (%)</label>
-                            <input type="number" step="0.1" name="rate" class="form-control" placeholder="20.0" required>
+                            <input type="number" step="0.1" name="rate" class="form-control" placeholder="%" required>
                         </div>
                         <div class="col-12">
-                            <button type="submit" class="btn btn-success w-100">Зберегти тип</button>
+                            <button type="submit" class="btn btn-success w-100">Зберегти</button>
                         </div>
                     </form>
                 </div>
@@ -223,39 +187,30 @@
         {% endif %}
 
         <hr class="my-5">
-        <h2 class="h4 mb-4"><i class="bi bi-file-earmark-medical"></i> Журнал податкових нарахувань</h2>
+        <h2 class="h4 mb-4"><i class="bi bi-file-earmark-medical"></i> Журнал нарахувань </h2>
 
         <div class="main-card">
             <table class="table table-sm table-striped align-middle">
                 <thead>
                     <tr>
-                        <th style="width: 60px;">ID</th>
+                        <th style="width: 100px;">ID</th>
                         <th>Платник</th>
-                        <th>Тип податку</th>
-                        <th class="text-end" style="width: 200px;">Сума до сплати</th>
-                        {% if role == 'admin' %}<th class="text-center" style="width: 100px;">Дії</th>{% endif %}
+                        <th>Податок</th>
+                        <th class="text-end" style="width: 200px;">Сума</th>
+                        {% if role == 'admin' %}<th class="text-center" style="width: 80px;">Дії</th>{% endif %}
                     </tr>
                 </thead>
                 <tbody>
                     {% for record in tax_records %}
                     <tr>
-                        <td>{{ record.id }}</td>
+                        <td><code class="mono-id" title="{{ record.id }}">{{ record.id[:6] }}</code></td>
                         <td>{{ record.taxpayer_name }}</td>
-                        <td>
-                            <span class="badge bg-secondary">{{ record.tax_name }} ({{ record.tax_rate }}%)</span>
-                        </td>
+                        <td><span class="badge bg-secondary">{{ record.tax_name }} ({{ record.tax_rate }}%)</span></td>
                         <td class="text-end fw-bold text-success">
                             {% if role == 'admin' %}
                             <form action="/tax-record/update/{{ record.id }}" method="post" class="d-inline-flex gap-1">
-                                <input type="number"
-                                       name="amount"
-                                       step="0.01"
-                                       value="{{ record.amount }}"
-                                       class="form-control form-control-sm text-end"
-                                       style="width: 110px;">
-                                <button type="submit" class="btn btn-sm btn-primary" title="Зберегти">
-                                    <i class="bi bi-check-lg"></i>
-                                </button>
+                                <input type="number" name="amount" step="0.01" value="{{ record.amount }}" class="form-control form-control-sm text-end" style="width: 100px;">
+                                <button type="submit" class="btn btn-sm btn-primary"><i class="bi bi-check-lg"></i></button>
                             </form>
                             {% else %}
                                 {{ record.amount }} грн
@@ -263,15 +218,9 @@
                         </td>
                         {% if role == 'admin' %}
                         <td class="text-center">
-                            <a href="/tax-record/delete/{{ record.id }}" class="btn btn-sm btn-outline-danger" title="Видалити нарахування">
-                                <i class="bi bi-trash3"></i>
-                            </a>
+                            <a href="/tax-record/delete/{{ record.id }}" class="btn btn-sm btn-outline-danger"><i class="bi bi-trash3"></i></a>
                         </td>
                         {% endif %}
-                    </tr>
-                    {% else %}
-                    <tr>
-                        <td colspan="5" class="text-center py-4 text-muted">Нарахувань поки немає</td>
                     </tr>
                     {% endfor %}
                 </tbody>
@@ -280,18 +229,16 @@
 
         {% if role == 'admin' %}
         <div class="admin-section shadow-sm border-primary" style="background-color: #e7f1ff; border-left-color: var(--gov-blue);">
-            <h3 class="h5 mb-3 text-primary"><i class="bi bi-calculator"></i> Нове податкове нарахування</h3>
+            <h3 class="h5 mb-3 text-primary"><i class="bi bi-calculator"></i> Нове нарахування</h3>
             <form action="/tax-record/add" method="post" class="row g-3">
                 <div class="col-md-4">
-                    <label class="form-label small fw-bold">Оберіть платника</label>
                     <select name="taxpayer_id" class="form-select" required>
                         {% for tp in taxpayers %}
-                        <option value="{{ tp.id }}">{{ tp.full_name }} ({{ tp.tin }})</option>
+                        <option value="{{ tp.id }}">{{ tp.full_name }}</option>
                         {% endfor %}
                     </select>
                 </div>
                 <div class="col-md-3">
-                    <label class="form-label small fw-bold">Тип податку</label>
                     <select name="tax_type_id" class="form-select" required>
                         {% for tt in tax_types %}
                         <option value="{{ tt.id }}">{{ tt.name }} ({{ tt.rate }}%)</option>
@@ -299,10 +246,9 @@
                     </select>
                 </div>
                 <div class="col-md-3">
-                    <label class="form-label small fw-bold">Дохід платника (грн)</label>
-                    <input type="number" name="income" step="0.01" class="form-control" placeholder="0.00" required>
+                    <input type="number" name="income" step="0.01" class="form-control" placeholder="Дохід (грн)" required>
                 </div>
-                <div class="col-md-2 d-flex align-items-end">
+                <div class="col-md-2">
                     <button type="submit" class="btn btn-gov w-100">Розрахувати</button>
                 </div>
             </form>
@@ -310,29 +256,35 @@
         {% endif %}
 
         <footer class="footer">
-            <p>© 2026 Державна податкова служба України. Всі права захищені.</p>
-            <p>Лабораторна робота №1 | Варіант 12 | Виконала: Сахно Маргарита | Група: ІО-35</p>
+            <p>© 2026 Державна податкова служба України.</p>
+            <p>Лабораторна робота №3 | Варіант 12 | Виконала: Сахно Маргарита | Група: ІО-35</p>
         </footer>
     </div>
 
 <script>
     document.getElementById('searchInput').addEventListener('keyup', function() {
         let filter = this.value.toLowerCase();
+        // Вибираємо всі рядки з усіх таблиць на сторінці
         let rows = document.querySelectorAll('table tbody tr');
 
         rows.forEach(row => {
             let matchFound = false;
             let cells = row.querySelectorAll('td');
 
+            // 1. Перевірка на збіг
             cells.forEach(cell => {
-                let inputField = cell.querySelector('input');
+                let inputField = cell.querySelector('input[type="text"]');
                 let textToSearch = "";
 
                 if (inputField) {
+                    // Якщо в комірці інпут (редагування ПІБ)
                     textToSearch = inputField.value.toLowerCase();
                 } else {
+                    // Зберігаємо оригінальний контент, щоб не втратити теги при підсвічуванні
                     if (!cell.dataset.original) cell.dataset.original = cell.innerHTML;
-                    textToSearch = cell.dataset.original.toLowerCase();
+
+                    // Для пошуку беремо чистий текст (без HTML тегів)
+                    textToSearch = cell.textContent.toLowerCase();
                 }
 
                 if (textToSearch.includes(filter)) {
@@ -340,23 +292,26 @@
                 }
             });
 
-            if (filter !== "") {
+            // 2. Підсвічування та відображення
+            if (filter !== "" && matchFound) {
                 cells.forEach(cell => {
-                    if (!cell.querySelector('input') && cell.dataset.original) {
+                    // Підсвічуємо тільки в звичайних комірках (не в інпутах і не в кнопках)
+                    if (!cell.querySelector('input') && !cell.querySelector('button') && cell.dataset.original) {
                         const re = new RegExp(`(${filter})`, 'gi');
                         cell.innerHTML = cell.dataset.original.replace(re, `<mark>$1</mark>`);
                     }
                 });
             } else {
+                // Повертаємо оригінальний вигляд, якщо пошук порожній
                 cells.forEach(cell => {
                     if (cell.dataset.original) cell.innerHTML = cell.dataset.original;
                 });
             }
 
+            // Показуємо або ховаємо рядок
             row.style.display = (matchFound || filter === "") ? '' : 'none';
         });
     });
 </script>
-
 </body>
 </html>
