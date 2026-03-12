@@ -1,54 +1,65 @@
-import psycopg2
-from psycopg2.extras import RealDictCursor
-from fastapi import FastAPI, Request, Form, Depends
+from fastapi import FastAPI, Request, Form
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
+from bson import ObjectId
 import database
+import asyncio
 
 app = FastAPI(
-    title="Система Обліку Податків (PostgreSQL)",
-    description="Лабораторна робота №2. Варіант 12. Платники, податки та нарахування",
-    version="2.0.0"
+    title="Система Обліку Податків (MongoDB)",
+    description="Лабораторна робота №3. Варіант 12. NoSQL рішення",
+    version="3.0.0"
 )
 
 templates = Jinja2Templates(directory="templates")
 
-# Ініціалізація БД при старті
-database.init_db()
 
+# --- ДОПОМІЖНІ ФУНКЦІЇ ДЛЯ КОНВЕРТАЦІЇ ДАНИХ ---
+def taxpayer_helper(tp) -> dict:
+    return {
+        "id": str(tp["_id"]),
+        "full_name": tp["full_name"],
+        "tin": tp["tin"]
+    }
+
+
+def tax_type_helper(tt) -> dict:
+    return {
+        "id": str(tt["_id"]),
+        "name": tt["name"],
+        "rate": tt["rate"]
+    }
+
+
+def record_helper(rec) -> dict:
+    return {
+        "id": str(rec["_id"]),
+        "amount": rec["amount"],
+        "taxpayer_name": rec.get("taxpayer_name", "Невідомо"),
+        "tax_name": rec.get("tax_name", "Невідомо"),
+        "tax_rate": rec.get("tax_rate", 0)
+    }
+
+
+# --- МАРШРУТИ ---
 
 @app.get("/", response_class=HTMLResponse)
 async def home(request: Request, role: str = "user"):
-    conn = database.get_db_connection()
-    cur = conn.cursor(cursor_factory=RealDictCursor)
-
     try:
         # 1. Отримання всіх платників
-        cur.execute("SELECT * FROM taxpayers ORDER BY id ASC")
-        taxpayers = cur.fetchall()
+        taxpayers = []
+        async for tp in database.taxpayers_collection.find().sort("full_name", 1):
+            taxpayers.append(taxpayer_helper(tp))
 
-        # 2. Отримання Типів податків
-        cur.execute("SELECT * FROM tax_types ORDER BY id ASC")
-        tax_types = cur.fetchall()
+        # 2. Отримання всіх типів податків
+        tax_types = []
+        async for tt in database.tax_types_collection.find().sort("name", 1):
+            tax_types.append(tax_type_helper(tt))
 
-        # 3. Отримання нарахувань з назвами податків та іменами платників
-        cur.execute("""
-            SELECT 
-                tr.id, 
-                tr.amount, 
-                tp.full_name as taxpayer_name, 
-                tp.tin,
-                tt.name as tax_name,
-                tt.rate as tax_rate
-            FROM tax_records tr
-            JOIN taxpayers tp ON tr.taxpayer_id = tp.id
-            LEFT JOIN tax_types tt ON tr.tax_type_id = tt.id
-            ORDER BY tr.id DESC
-        """)
-        tax_records = cur.fetchall()
-
-        cur.close()
-        conn.close()
+        # 3. Отримання нарахувань (в NoSQL зберігаємо денормалізовані дані)
+        tax_records = []
+        async for rec in database.records_collection.find().sort("_id", -1):
+            tax_records.append(record_helper(rec))
 
         return templates.TemplateResponse("index.html", {
             "request": request,
@@ -59,111 +70,81 @@ async def home(request: Request, role: str = "user"):
             "name": "Ерік"
         })
     except Exception as e:
-        print(f"Помилка БД: {e}")
-        return HTMLResponse(content="Помилка підключення до PostgreSQL.", status_code=500)
+        print(f"Помилка MongoDB: {e}")
+        return HTMLResponse(content="Помилка підключення до MongoDB.", status_code=500)
 
 
 @app.post("/taxpayer/add")
 async def add_taxpayer(full_name: str = Form(...), tin: str = Form(...)):
-    conn = database.get_db_connection()
-    cur = conn.cursor()
-    try:
-        # Додавання нового платника через параметризований запит
-        cur.execute("INSERT INTO taxpayers (full_name, tin) VALUES (%s, %s)", (full_name, tin))
-        conn.commit()
-    finally:
-        cur.close()
-        conn.close()
+    await database.taxpayers_collection.insert_one({
+        "full_name": full_name,
+        "tin": tin
+    })
     return RedirectResponse(url="/?role=admin", status_code=303)
 
 
 @app.post("/taxpayer/update/{tp_id}")
-async def update_taxpayer(tp_id: int, full_name: str = Form(...)):
-    conn = database.get_db_connection()
-    cur = conn.cursor()
-    try:
-        # Оновлення даних платника
-        cur.execute("UPDATE taxpayers SET full_name = %s WHERE id = %s", (full_name, tp_id))
-        conn.commit()
-    finally:
-        cur.close()
-        conn.close()
+async def update_taxpayer(tp_id: str, full_name: str = Form(...)):
+    await database.taxpayers_collection.update_one(
+        {"_id": ObjectId(tp_id)},
+        {"$set": {"full_name": full_name}}
+    )
     return RedirectResponse(url="/?role=admin", status_code=303)
 
 
 @app.get("/taxpayer/delete/{tp_id}")
-async def delete_taxpayer(tp_id: int):
-    conn = database.get_db_connection()
-    cur = conn.cursor()
-    try:
-        # Видалення платника
-        cur.execute("DELETE FROM taxpayers WHERE id = %s", (tp_id,))
-        conn.commit()
-    finally:
-        cur.close()
-        conn.close()
-    return RedirectResponse(url="/?role=admin", status_code=303)
+async def delete_taxpayer(tp_id: str):
+    # Видаляємо платника
+    await database.taxpayers_collection.delete_one({"_id": ObjectId(tp_id)})
 
-
-@app.post("/tax-record/add")
-async def add_record(
-        taxpayer_id: int = Form(...),
-        tax_type_id: int = Form(...),
-        income: float = Form(...)
-):
-    conn = database.get_db_connection()
-    cur = conn.cursor(cursor_factory=RealDictCursor)
-
-    # Спочатку дізнаємося ставку податку з бази
-    cur.execute("SELECT rate FROM tax_types WHERE id = %s", (tax_type_id,))
-    tax_type = cur.fetchone()
-
-    if tax_type:
-        amount = income * (tax_type['rate'] / 100)
-
-        cur.execute(
-            "INSERT INTO tax_records (amount, taxpayer_id, tax_type_id) VALUES (%s, %s, %s)",
-            (amount, taxpayer_id, tax_type_id)
-        )
-        conn.commit()
-
-    cur.close()
-    conn.close()
-    return RedirectResponse(url="/?role=admin", status_code=303)
-
-
-@app.get("/tax-record/delete/{record_id}")
-async def delete_record(record_id: int):
-    conn = database.get_db_connection()
-    cur = conn.cursor()
-    try:
-        cur.execute("DELETE FROM tax_records WHERE id = %s", (record_id,))
-        conn.commit()
-    finally:
-        cur.close()
-        conn.close()
+    await database.records_collection.delete_many({"taxpayer_id": ObjectId(tp_id)})
     return RedirectResponse(url="/?role=admin", status_code=303)
 
 
 @app.post("/tax-type/add")
 async def add_tax_type(name: str = Form(...), rate: float = Form(...)):
-    conn = database.get_db_connection()
-    cur = conn.cursor()
-    try:
-        cur.execute("INSERT INTO tax_types (name, rate) VALUES (%s, %s)", (name, rate))
-        conn.commit()
-    finally:
-        cur.close()
-        conn.close()
+    await database.tax_types_collection.insert_one({
+        "name": name,
+        "rate": rate
+    })
+    return RedirectResponse(url="/?role=admin", status_code=303)
+
+
+@app.post("/tax-record/add")
+async def add_record(
+        taxpayer_id: str = Form(...),
+        tax_type_id: str = Form(...),
+        income: float = Form(...)
+):
+    # Шукаємо дані платника та типу податку
+    tp = await database.taxpayers_collection.find_one({"_id": ObjectId(taxpayer_id)})
+    tt = await database.tax_types_collection.find_one({"_id": ObjectId(tax_type_id)})
+
+    if tp and tt:
+        amount = income * (tt['rate'] / 100)
+
+        # В NoSQL зберігаємо копії імен (денормалізація), щоб не робити JOIN при читанні
+        await database.records_collection.insert_one({
+            "amount": round(amount, 2),
+            "taxpayer_id": ObjectId(taxpayer_id),
+            "taxpayer_name": tp["full_name"],
+            "tax_name": tt["name"],
+            "tax_rate": tt["rate"]
+        })
+
+    return RedirectResponse(url="/?role=admin", status_code=303)
+
+
+@app.get("/tax-record/delete/{record_id}")
+async def delete_record(record_id: str):
+    await database.records_collection.delete_one({"_id": ObjectId(record_id)})
     return RedirectResponse(url="/?role=admin", status_code=303)
 
 
 @app.post("/tax-record/update/{record_id}")
-async def update_record(record_id: int, amount: float = Form(...)):
-    conn = database.get_db_connection()
-    cur = conn.cursor()
-    cur.execute("UPDATE tax_records SET amount = %s WHERE id = %s", (amount, record_id))
-    conn.commit()
-    cur.close()
-    conn.close()
+async def update_record(record_id: str, amount: float = Form(...)):
+    await database.records_collection.update_one(
+        {"_id": ObjectId(record_id)},
+        {"$set": {"amount": amount}}
+    )
     return RedirectResponse(url="/?role=admin", status_code=303)
