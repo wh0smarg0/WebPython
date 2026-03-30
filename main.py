@@ -8,13 +8,23 @@ from database import SessionLocal, engine
 # Створення таблиць
 models.Base.metadata.create_all(bind=engine)
 
+# Після створення таблиць додаємо початкові дані
+db_sync = SessionLocal()
+if not db_sync.query(models.TaxType).first():
+    # Додаємо стандартні типи податків для Варіанту 12
+    db_sync.add(models.TaxType(name="ПДВ", rate=20.0))
+    db_sync.add(models.TaxType(name="Військовий збір", rate=1.5))
+    db_sync.add(models.TaxType(name="ПДФО", rate=18.0))
+    db_sync.commit()
+db_sync.close()
+
 app = FastAPI(
     title="Система Обліку Податків",
     description="Лабораторна робота №1. Варіант 12. Платники, податки та нарахування.",
     version="1.2.0" # Зміна в OpenAPI
 )
 
-templates = Jinja2Templates(directory="templates")
+templates = Jinja2Templates(directory=".")
 
 def get_db():
     db = SessionLocal()
