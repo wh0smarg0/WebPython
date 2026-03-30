@@ -1,0 +1,47 @@
+name: Deploy Labs Independently
+
+on:
+  push:
+    branches:
+      - lab1      # Для 1-ї лаби
+      - lab2      # Для 2-ї лаби (PostgreSQL)
+      - lab3      # Для 3-ї лаби (MongoDB)
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install fastapi uvicorn jinja2 python-multipart
+          # Встановлюємо специфічні драйвери залежно від гілки
+          if [ "${{ github.ref_name }}" == "lab2" ]; then
+            pip install psycopg2-binary
+          elif [ "${{ github.ref_name }}" == "lab3" ]; then
+            pip install motor dnspython
+          fi
+
+      - name: Run Linting (Optional)
+        run: |
+          # Перевірка, чи запускається додаток (без реального підключення до БД)
+          echo "Checking syntax for branch ${{ github.ref_name }}"
+          python -m py_compile main.py
+
+  deploy:
+    needs: build-and-test
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push'
+    steps:
+      - name: Deploy Info
+        run: |
+          echo "Deploying ${{ github.ref_name }} to independent environment..."
