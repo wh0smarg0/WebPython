@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Вхід — Електронний кабінет ДПС</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+    <style>
+        :root {
+            --gov-blue: #003366;
+            --gov-gold: #ffcc00;
+        }
+
+        body {
+            /* Градієнт та легкий візерунок на фоні для солідності */
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            margin: 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        .login-container {
+            width: 100%;
+            max-width: 420px;
+            perspective: 1000px;
+        }
+
+        .login-card {
+            background: white;
+            border: none;
+            border-radius: 0;
+            border-top: 5px solid var(--gov-gold);
+            box-shadow: 0 15px 35px rgba(0, 51, 102, 0.15);
+            padding: 40px;
+        }
+
+        .gov-logo {
+            font-size: 3rem;
+            color: var(--gov-blue);
+            margin-bottom: 10px;
+        }
+
+        .login-title {
+            color: var(--gov-blue);
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            font-size: 1.2rem;
+            margin-bottom: 5px;
+        }
+
+        .login-subtitle {
+            font-size: 0.85rem;
+            color: #6c757d;
+            margin-bottom: 30px;
+        }
+
+        .form-label {
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: var(--gov-blue);
+        }
+
+        .input-group-text {
+            background-color: #f8f9fa;
+            border-right: none;
+            color: #adb5bd;
+        }
+
+        .form-control {
+            border-left: none;
+            padding: 12px;
+            font-size: 0.95rem;
+        }
+
+        .form-control:focus {
+            box-shadow: none;
+            border-color: #dee2e6;
+        }
+
+        .btn-gov {
+            background-color: var(--gov-blue);
+            color: white;
+            padding: 12px;
+            font-weight: 600;
+            border-radius: 0;
+            transition: all 0.3s ease;
+            border: none;
+        }
+
+        .btn-gov:hover {
+            background-color: #002244;
+            color: white;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        }
+
+        .footer-text {
+            font-size: 0.75rem;
+            color: #adb5bd;
+            text-align: center;
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="login-container">
+        <div class="login-card">
+            <div class="text-center">
+                <div class="gov-logo">
+                    <i class="bi bi-shield-lock-fill"></i>
+                </div>
+                <h1 class="login-title">ДПС УКРАЇНИ</h1>
+                <p class="login-subtitle">Електронний кабінет платника податків</p>
+            </div>
+
+            {% if form.errors %}
+                <div class="alert alert-danger d-flex align-items-center" role="alert" style="font-size: 0.85rem;">
+                    <i class="bi bi-exclamation-triangle-fill me-2"></i>
+                    <div>Невірний логін або пароль.</div>
+                </div>
+            {% endif %}
+
+            <form method="post">
+                {% csrf_token %}
+                <div class="mb-3">
+                    <label class="form-label">Ідентифікатор (Логін)</label>
+                    <div class="input-group">
+                        <span class="input-group-text"><i class="bi bi-person"></i></span>
+                        <input type="text" name="username" class="form-control" placeholder="Введіть ваш логін" required autocomplete="username">
+                    </div>
+                </div>
+
+                <div class="mb-4">
+                    <label class="form-label">Пароль</label>
+                    <div class="input-group">
+                        <span class="input-group-text"><i class="bi bi-key"></i></span>
+                        <input type="password" name="password" class="form-control" placeholder="Введіть пароль" required autocomplete="current-password">
+                    </div>
+                </div>
+
+                <button type="submit" class="btn btn-gov w-100 shadow-sm">
+                    УВІЙТИ В КАБІНЕТ
+                </button>
+            </form>
+
+            <div class="footer-text">
+                <i class="bi bi-info-circle me-1"></i> Використовуйте захищене з'єднання
+            </div>
+        </div>
+        <p class="text-center mt-3" style="font-size: 0.8rem; color: #6c757d;">
+            © 2026 Всі права захищено. Державна податкова служба України
+        </p>
+    </div>
+
+</body>
+</html>
