@@ -36,4 +36,8 @@ urlpatterns = [
     path('taxtype/add/', views.taxtype_add, name='taxtype_add'),
     path('taxrecord/add/', views.taxrecord_add, name='taxrecord_add'),
     path('taxrecord/delete/<int:pk>/', views.taxrecord_delete, name='taxrecord_delete'),
+    path('taxpayer/edit/<int:pk>/', views.taxpayer_edit, name='taxpayer_edit'),
+    path('record/edit/<int:pk>/', views.taxrecord_edit, name='taxrecord_edit'),
+    path('export/csv/', views.export_taxpayers_csv, name='export_csv'),
+    path('record/receipt/<int:pk>/', views.download_receipt, name='download_receipt'),
 ]

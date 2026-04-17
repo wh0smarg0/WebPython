@@ -24,6 +24,11 @@ class TaxRecord(models.Model):
     tax_type = models.ForeignKey(TaxType, on_delete=models.CASCADE, verbose_name="Тип податку")
     amount = models.FloatField(verbose_name="Сума до сплати")
     is_paid = models.BooleanField(default=False, verbose_name="Статус оплати")
+    paid_at = models.DateTimeField(null=True, blank=True)
+
+    def is_high_tax(self):
+        """Перевіряє, чи є податок високим (для візуального виділення)"""
+        return self.amount > 5000
 
     def __str__(self):
         return f"{self.taxpayer.full_name} - {self.tax_type.name}: {self.amount}"

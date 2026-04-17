@@ -6,6 +6,7 @@
     <title>Державна податкова служба — Django Edition</title>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <style>
         :root {
             --gov-blue: #003366;
@@ -109,6 +110,20 @@
         </div>
     </header>
 
+    <div class="container mt-3">
+        {% if messages %}
+            {% for message in messages %}
+                <div class="alert alert-{{ message.tags }} alert-dismissible fade show shadow-sm" role="alert">
+                    <i class="bi {% if message.tags == 'success' %}bi-check-circle{% else %}bi-exclamation-triangle{% endif %} me-2"></i>
+                    {{ message }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                </div>
+            {% endfor %}
+        {% endif %}
+    </div>
+
+    <tr class="{% if record.is_high_tax %}table-warning{% endif %}"></tr>
+
     <div class="container">
         <div class="d-flex justify-content-between align-items-center mb-4">
             <h2 class="h4"><i class="bi bi-people-fill"></i> Реєстр платників </h2>
@@ -154,7 +169,17 @@
                         <td><code>{{ tp.tin }}</code></td>
                         {% if user.is_superuser %}
                         <td class="text-center">
-                            <a href="{% url 'taxpayer_delete' tp.id %}" class="btn btn-sm btn-outline-danger" onclick="return confirm('Видалити платника та всі його нарахування?')">
+                            <button type="button" class="btn btn-sm btn-outline-primary me-1 edit-button"
+                                    data-id="{{ tp.id }}"
+                                    data-name="{{ tp.full_name }}"
+                                    data-tin="{{ tp.tin }}"
+                                    data-bs-toggle="modal"
+                                    data-bs-target="#editTaxpayerModal">
+                                <i class="bi bi-pencil"></i>
+                            </button>
+
+                            <a href="{% url 'taxpayer_delete' tp.id %}" class="btn btn-sm btn-outline-danger"
+                               onclick="return confirm('Видалити платника та всі його нарахування?')">
                                 <i class="bi bi-trash"></i>
                             </a>
                         </td>
@@ -169,37 +194,59 @@
 
         {% if user.is_superuser %}
         <div class="admin-section shadow-sm">
-            <div class="row">
-                <div class="col-md-7 border-end">
-                    <h3 class="h5 mb-3"><i class="bi bi-plus-circle"></i> Новий платник</h3>
-                    <form action="{% url 'taxpayer_add' %}" method="post" class="row g-3">
+            <div class="row align-items-stretch">
+
+                <div class="col-md-7 border-end d-flex flex-column">
+                    <h3 class="h5 mb-3 text-primary"><i class="bi bi-person-plus-fill"></i> Реєстрація платника</h3>
+                    <form action="{% url 'taxpayer_add' %}" method="post" class="row g-3 mt-auto">
                         {% csrf_token %}
                         <div class="col-md-7">
-                            <input type="text" name="full_name" class="form-control" placeholder="ПІБ" required>
+                            <label class="form-label small fw-bold text-muted">Повне ім'я</label>
+                            {{ tp_form.full_name }}
+                            {% if tp_form.full_name.errors %}
+                                <div class="text-danger small mt-1">{% for error in tp_form.full_name.errors %}{{ error }}{% endfor %}</div>
+                            {% endif %}
                         </div>
+
                         <div class="col-md-5">
-                            <input type="text" name="tin" class="form-control" placeholder="ІПН (10 цифр)" required pattern="\d{10}">
+                            <label class="form-label small fw-bold text-muted">Ідентифікаційний код</label>
+                            {{ tp_form.tin }}
+                            {% if tp_form.tin.errors %}
+                                <div class="text-danger small mt-1">{% for error in tp_form.tin.errors %}{{ error }}{% endfor %}</div>
+                            {% endif %}
                         </div>
+
                         <div class="col-12">
-                            <button type="submit" class="btn btn-gov w-100">Додати платника</button>
+                            <button type="submit" class="btn btn-gov w-100 shadow-sm">
+                                <i class="bi bi-check2-square me-2"></i>Додати платника до реєстру
+                            </button>
                         </div>
                     </form>
                 </div>
-                <div class="col-md-5">
-                    <h3 class="h5 mb-3 text-success"><i class="bi bi-gear-fill"></i> Тип податку</h3>
-                    <form action="{% url 'taxtype_add' %}" method="post" class="row g-3">
+
+                <div class="col-md-5 d-flex flex-column">
+                    <h3 class="h5 mb-3 text-success"><i class="bi bi-gear-fill"></i> Налаштування податків</h3>
+                    <form action="{% url 'taxtype_add' %}" method="post" class="row g-3 mt-auto">
                         {% csrf_token %}
+
                         <div class="col-md-7">
-                            <input type="text" name="name" class="form-control" placeholder="Назва (напр. ПДВ)" required>
+                            <label class="form-label small fw-bold text-muted">Назва категорії</label>
+                            <input type="text" name="name" class="form-control" placeholder="Напр: Військовий збір" required>
                         </div>
+
                         <div class="col-md-5">
-                            <input type="number" step="0.1" name="rate" class="form-control" placeholder="%" required>
+                            <label class="form-label small fw-bold text-muted">Ставка (%)</label>
+                            <input type="number" step="0.1" name="rate" class="form-control" placeholder="1.5" required>
                         </div>
+
                         <div class="col-12">
-                            <button type="submit" class="btn btn-success w-100">Зберегти</button>
+                            <button type="submit" class="btn btn-success w-100 shadow-sm">
+                                <i class="bi bi-save me-2"></i>Зберегти нову ставку
+                            </button>
                         </div>
                     </form>
                 </div>
+
             </div>
         </div>
         {% endif %}
@@ -212,6 +259,9 @@
                     <button onclick="window.print()" class="btn btn-sm btn-outline-primary shadow-sm">
                         <i class="bi bi-printer"></i> Друкувати звіт
                     </button>
+                    <a href="{% url 'export_csv' %}" class="btn btn-sm btn-outline-secondary shadow-sm">
+                        <i class="bi bi-file-earmark-excel me-1"></i> Експорт у CSV
+                    </a>
                 </div>
             </div>
 
@@ -256,19 +306,37 @@
 
                         <td class="text-center">
                             {% if user.is_superuser %}
-                            <a href="{% url 'taxrecord_delete' record.id %}" class="btn btn-sm btn-outline-danger">
-                                <i class="bi bi-trash3"></i>
-                            </a>
+                                <div class="d-flex justify-content-center align-items-center">
+                                    <button type="button" class="btn btn-sm btn-outline-success edit-record-button me-2"
+                                            data-id="{{ record.id }}"
+                                            data-taxpayer="{{ record.taxpayer.id }}"
+                                            data-type="{{ record.tax_type.id }}"
+                                            data-bs-toggle="modal"
+                                            data-bs-target="#editRecordModal">
+                                        <i class="bi bi-pencil"></i>
+                                    </button>
+
+                                    <a href="{% url 'taxrecord_delete' record.id %}"
+                                       class="btn btn-sm btn-outline-danger"
+                                       onclick="return confirm('Видалити цей запис?')">
+                                        <i class="bi bi-trash3"></i>
+                                    </a>
+                                </div>
                             {% else %}
-                            {% if not record.is_paid %}
-                            <a href="{% url 'pay_tax' record.id %}" class="btn btn-sm btn-success shadow-sm">
-                                <i class="bi bi-credit-card"></i> Сплатити
-                            </a>
-                            {% else %}
-                            <span class="text-success fw-bold small">
-                                <i class="bi bi-check-circle-fill"></i> Оплачено
-                            </span>
-                            {% endif %}
+                                <td class="text-center align-middle">
+                                    {% if not record.is_paid %}
+                                        <a href="{% url 'pay_tax' record.id %}" class="btn btn-sm btn-success shadow-sm">
+                                            <i class="bi bi-credit-card me-1"></i> Сплатити
+                                        </a>
+                                    {% else %}
+                                        <a href="{% url 'download_receipt' record.id %}"
+                                           class="btn btn-sm btn-outline-danger shadow-sm d-inline-flex align-items-center"
+                                           title="Завантажити квитанцію про сплату">
+                                            <i class="bi bi-file-earmark-pdf-fill me-2"></i>
+                                            <span class="fw-bold" style="font-size: 0.85rem;">Квитанція PDF</span>
+                                        </a>
+                                    {% endif %}
+                                </td>
                             {% endif %}
                         </td>
                     </tr>
@@ -336,6 +404,44 @@
         </footer>
     </div>
 
+    <div class="modal fade" id="editTaxpayerModal" tabindex="-1" aria-labelledby="editTaxpayerModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header" style="background-color: #003366; color: white;">
+                    <h5 class="modal-title" id="editTaxpayerModalLabel">Редагування платника</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="editTaxpayerForm" method="post">
+                        {% csrf_token %}
+                        <div id="modalFormBody">
+                            </div>
+                        <button type="submit" class="btn btn-primary w-100 mt-3" style="background-color: #003366;">Зберегти зміни</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="editRecordModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header bg-success text-white">
+                    <h5 class="modal-title">Редагування нарахування</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="editRecordForm" method="post">
+                        {% csrf_token %}
+                        <div id="modalRecordFormBody">
+                            </div>
+                        <button type="submit" class="btn btn-success w-100 mt-3">Оновити запис</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
 <script>
     const searchInput = document.getElementById('searchInput');
     if (searchInput) {
@@ -380,6 +486,64 @@
             });
         });
     }
+
+    document.querySelectorAll('.edit-button').forEach(button => {
+        button.addEventListener('click', function() {
+            const id = this.getAttribute('data-id');
+            const name = this.getAttribute('data-name');
+            const tin = this.getAttribute('data-tin');
+
+            // Оновлюємо URL форми (шлях до нашої в'юхи)
+            document.getElementById('editTaxpayerForm').action = `/taxpayer/edit/${id}/`;
+
+            // Заповнюємо поля (використовуємо HTML нашого tp_form, але з даними)
+            document.getElementById('modalFormBody').innerHTML = `
+                <div class="mb-3">
+                    <label class="form-label">ПІБ Платника</label>
+                    <input type="text" name="full_name" class="form-control" value="${name}" required>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">ІПН</label>
+                    <input type="text" name="tin" class="form-control" value="${tin}" required>
+                </div>
+            `;
+        });
+    });
+
+    // Обробка для нарахувань
+    document.querySelectorAll('.edit-record-button').forEach(button => {
+        button.addEventListener('click', function() {
+            const id = this.getAttribute('data-id');
+            const taxpayerId = this.getAttribute('data-taxpayer');
+            const typeId = this.getAttribute('data-type');
+
+            document.getElementById('editRecordForm').action = `/record/edit/${id}/`;
+
+            document.getElementById('modalRecordFormBody').innerHTML = `
+                <div class="mb-3">
+                    <label class="form-label small fw-bold">Платник</label>
+                    <select name="taxpayer" class="form-select">
+                        {% for tp in taxpayers %}
+                            <option value="{{ tp.id }}" ${taxpayerId == "{{ tp.id }}" ? 'selected' : ''}>{{ tp.full_name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label small fw-bold">Тип податку</label>
+                    <select name="tax_type" class="form-select">
+                        {% for type in tax_types %}
+                            <option value="{{ type.id }}" ${typeId == "{{ type.id }}" ? 'selected' : ''}>{{ type.name }} ({{ type.rate }}%)</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label small fw-bold">Дохід (грн)</label>
+                    <input type="number" step="0.01" name="income" class="form-control" required placeholder="Введіть суму для перерахунку">
+                </div>
+            `;
+        });
+    });
+
 </script>
 </body>
 </html>
