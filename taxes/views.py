@@ -176,7 +176,7 @@ def export_taxpayers_csv(request):
 
     # Створюємо HTTP-відповідь з правильним типом контенту
     response = HttpResponse(content_type='text/csv')
-    # Додаємо заголовок файлу (українською мовою може бути проблема з кодуванням, тому використовуємо utf-8-sig)
+    # Додаємо заголовок файлу
     response['Content-Disposition'] = 'attachment; filename="taxpayers_report.csv"'
     response.write(u'\ufeff'.encode('utf8')) # Для коректного відображення кирилиці в Excel
 
@@ -185,7 +185,6 @@ def export_taxpayers_csv(request):
 
     taxpayers = Taxpayer.objects.all()
     for tp in taxpayers:
-        # Можеш додати логіку підрахунку суми прямо тут
         total = sum(record.amount for record in tp.taxrecord_set.all())
         writer.writerow([tp.full_name, tp.tin, f"{total:.2f}", "Активний"])
 
