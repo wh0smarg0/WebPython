@@ -169,27 +169,32 @@ def taxrecord_edit(request, pk):
             messages.success(request, f"Запис для {record.taxpayer.full_name} оновлено.")
     return redirect('home')
 
+
 @login_required
 def export_taxpayers_csv(request):
     if not request.user.is_superuser:
         return redirect('home')
 
-    # Створюємо HTTP-відповідь з правильним типом контенту
-    response = HttpResponse(content_type='text/csv')
-    # Додаємо заголовок файлу
+    response = HttpResponse(content_type='text/csv; charset=utf-8')
     response['Content-Disposition'] = 'attachment; filename="taxpayers_report.csv"'
-    response.write(u'\ufeff'.encode('utf8')) # Для коректного відображення кирилиці в Excel
 
-    writer = csv.writer(response)
-    writer.writerow(['ПІБ Платника', 'ІПН', 'Загальна сума нарахувань', 'Статус'])
+    # BOM для Excel
+    response.write(u'\ufeff'.encode('utf8'))
+
+    # Використовуємо delimiter=';' — це ключ до правильного відображення в Excel
+    writer = csv.writer(response, delimiter=';', quoting=csv.QUOTE_ALL)
+
+    # Додаємо заголовки
+    writer.writerow(['ПІБ Платника', 'ІПН', 'Сума нарахувань (грн)', 'Статус'])
 
     taxpayers = Taxpayer.objects.all()
     for tp in taxpayers:
         total = sum(record.amount for record in tp.taxrecord_set.all())
-        writer.writerow([tp.full_name, tp.tin, f"{total:.2f}", "Активний"])
+        # Замінюємо крапку на кому в числах, щоб Excel розпізнав це як гроші
+        total_formatted = str(f"{total:.2f}").replace('.', ',')
+        writer.writerow([tp.full_name, tp.tin, total_formatted, "Активний"])
 
     return response
-
 
 @login_required
 def download_receipt(request, pk):
