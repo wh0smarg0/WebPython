@@ -72,7 +72,7 @@ def declare_tax(request):
 
 @login_required(login_url='/login/')
 def pay_tax(request, record_id):
-    # ПУНКТ 3: Знаходимо запис і міняємо статус на "Оплачено"
+    # Знаходимо запис і міняємо статус на "Оплачено"
     try:
         record = TaxRecord.objects.get(id=record_id, taxpayer=request.user.taxpayer)
         record.is_paid = True
@@ -198,18 +198,17 @@ def download_receipt(request, pk):
     buffer = io.BytesIO()
     p = canvas.Canvas(buffer)
 
-    # 1. Реєструємо український шрифт (Arial є на кожному Windows)
+    # Реєструємо український шрифт
     font_path = "C:\\Windows\\Fonts\\arial.ttf"
 
-    # Перевіримо, чи файл існує, щоб не "лягла" в'юха
+    # Перевіримо, чи файл існує
     if os.path.exists(font_path):
         pdfmetrics.registerFont(TTFont('ArialUA', font_path))
         p.setFont('ArialUA', 14)
     else:
-        # Якщо раптом шляхи відрізняються, використаємо стандартний (але будуть крякозябри)
+        # Якщо шляхи відрізняються, використаємо стандартний
         p.setFont("Helvetica", 14)
 
-    # 2. Малюємо текст (тепер він буде українською)
     p.drawString(100, 800, f"Квитанція про сплату податку №{record.id}")
     p.line(100, 790, 500, 790)
 

@@ -34,7 +34,7 @@ class TaxpayerForm(forms.ModelForm):
         return tin
 
 class TaxRecordForm(forms.ModelForm):
-    # Додаємо поле для введення доходу (якого немає в моделі, бо ми зберігаємо суму)
+    # Додаємо поле для введення доходу (якого немає в моделі)
     income = forms.FloatField(
         label="Сума доходу (грн)",
         min_value=0.01,
