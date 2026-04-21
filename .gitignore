@@ -1,0 +1,9 @@
+.venv/
+__pycache__/
+*.pyc
+.idea/
+.vscode/
+tax_service/
+taxes/
+manage.py
+db.sqlite3

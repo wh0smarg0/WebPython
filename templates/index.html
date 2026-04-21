@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Державна податкова служба — Django Edition</title>
+    <title>Державна податкова служба — Flask Edition</title>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
@@ -97,13 +97,13 @@
                 <i class="bi bi-bank"></i>
                 <div class="gov-title">
                     <h1>Державна податкова служба</h1>
-                    <p>Система «Облік платників» (PostgreSQL & Django)</p>
+                    <p>Система «Облік платників» (PostgreSQL & Flask)</p>
                 </div>
             </div>
             <div>
                 <span class="text-white me-3">Вітаємо, <b>{{ user.username }}</b>!</span>
-                <form action="{% url 'logout' %}" method="post" class="d-inline">
-                    {% csrf_token %}
+                <form action="{{ url_for('logout') }}" method="post" class="d-inline">
+                    {{ tp_form.hidden_tag() }}
                     <button type="submit" class="btn btn-sm btn-outline-light">Вийти</button>
                 </form>
             </div>
@@ -111,18 +111,18 @@
     </header>
 
     <div class="container mt-3">
-        {% if messages %}
-            {% for message in messages %}
-                <div class="alert alert-{{ message.tags }} alert-dismissible fade show shadow-sm" role="alert">
-                    <i class="bi {% if message.tags == 'success' %}bi-check-circle{% else %}bi-exclamation-triangle{% endif %} me-2"></i>
+        {% with messages = get_flashed_messages(with_categories=true) %}
+          {% if messages %}
+            {% for category, message in messages %}
+                <div class="alert alert-{{ category if category != 'error' else 'danger' }} alert-dismissible fade show shadow-sm" role="alert">
+                    <i class="bi {% if category == 'success' %}bi-check-circle{% else %}bi-exclamation-triangle{% endif %} me-2"></i>
                     {{ message }}
                     <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
                 </div>
             {% endfor %}
-        {% endif %}
+          {% endif %}
+        {% endwith %}
     </div>
-
-    <tr class="{% if record.is_high_tax %}table-warning{% endif %}"></tr>
 
     <div class="container">
         <div class="d-flex justify-content-between align-items-center mb-4">
@@ -157,9 +157,12 @@
                         <td><code class="mono-id" title="Повний ID: {{ tp.id }}">{{ tp.id }}</code></td>
                         <td>
                             {% if user.is_superuser %}
-                            <form action="/taxpayer/update/{{ tp.id }}" method="post" class="d-flex gap-2">
-                                {% csrf_token %}
+                            <form action="{{ url_for('taxpayer_edit', pk=tp.id) }}" method="post" class="d-flex gap-2">
+                                {{ tp_form.hidden_tag() }}
                                 <input type="text" name="full_name" value="{{ tp.full_name }}" class="form-control form-control-sm">
+
+                                <input type="hidden" name="tin" value="{{ tp.tin }}">
+
                                 <button type="submit" class="btn btn-sm btn-gov">Оновити</button>
                             </form>
                             {% else %}
@@ -178,15 +181,15 @@
                                 <i class="bi bi-pencil"></i>
                             </button>
 
-                            <a href="{% url 'taxpayer_delete' tp.id %}" class="btn btn-sm btn-outline-danger"
+                            <a href="{{ url_for('taxpayer_delete', pk=tp.id) }}" class="btn btn-sm btn-outline-danger"
                                onclick="return confirm('Видалити платника та всі його нарахування?')">
                                 <i class="bi bi-trash"></i>
                             </a>
                         </td>
                         {% endif %}
                     </tr>
-                    {% empty %}
-                    <tr><td colspan="4" class="text-center py-4 text-muted">Ви ще не прив'язані до картки платника податків.</td></tr>
+                    {% else %}
+                    <tr><td colspan="4" class="text-center py-4 text-muted">Реєстр платників порожній.</td></tr>
                     {% endfor %}
                 </tbody>
             </table>
@@ -198,22 +201,23 @@
 
                 <div class="col-md-7 border-end d-flex flex-column">
                     <h3 class="h5 mb-3 text-primary"><i class="bi bi-person-plus-fill"></i> Реєстрація платника</h3>
-                    <form action="{% url 'taxpayer_add' %}" method="post" class="row g-3 mt-auto">
-                        {% csrf_token %}
+                    <form action="{{ url_for('taxpayer_add') }}" method="post" class="row g-3 mt-auto">
+                        {{ tp_form.hidden_tag() }}
+
                         <div class="col-md-7">
                             <label class="form-label small fw-bold text-muted">Повне ім'я</label>
-                            {{ tp_form.full_name }}
-                            {% if tp_form.full_name.errors %}
-                                <div class="text-danger small mt-1">{% for error in tp_form.full_name.errors %}{{ error }}{% endfor %}</div>
-                            {% endif %}
+                            {{ tp_form.full_name() }}
+                            {% for error in tp_form.full_name.errors %}
+                                <div class="text-danger small mt-1">{{ error }}</div>
+                            {% endfor %}
                         </div>
 
                         <div class="col-md-5">
                             <label class="form-label small fw-bold text-muted">Ідентифікаційний код</label>
-                            {{ tp_form.tin }}
-                            {% if tp_form.tin.errors %}
-                                <div class="text-danger small mt-1">{% for error in tp_form.tin.errors %}{{ error }}{% endfor %}</div>
-                            {% endif %}
+                            {{ tp_form.tin() }}
+                            {% for error in tp_form.tin.errors %}
+                                <div class="text-danger small mt-1">{{ error }}</div>
+                            {% endfor %}
                         </div>
 
                         <div class="col-12">
@@ -226,8 +230,8 @@
 
                 <div class="col-md-5 d-flex flex-column">
                     <h3 class="h5 mb-3 text-success"><i class="bi bi-gear-fill"></i> Налаштування податків</h3>
-                    <form action="{% url 'taxtype_add' %}" method="post" class="row g-3 mt-auto">
-                        {% csrf_token %}
+                    <form action="{{ url_for('taxtype_add') }}" method="post" class="row g-3 mt-auto">
+                        {{ tp_form.hidden_tag() }}
 
                         <div class="col-md-7">
                             <label class="form-label small fw-bold text-muted">Назва категорії</label>
@@ -260,7 +264,7 @@
                         <i class="bi bi-printer"></i> Друкувати звіт
                     </button>
                     {% if user.is_superuser %}
-                    <a href="{% url 'export_csv' %}" class="btn btn-sm btn-outline-secondary shadow-sm">
+                    <a href="{{ url_for('export_taxpayers_csv') }}" class="btn btn-sm btn-outline-secondary shadow-sm">
                         <i class="bi bi-file-earmark-excel me-1"></i> Експорт у CSV
                     </a>
                     {% endif %}
@@ -276,7 +280,7 @@
                         </div>
                         <div>
                             <div class="text-uppercase text-muted fw-bold" style="font-size: 0.65rem;">До сплати</div>
-                            <div class="h4 mb-0 text-danger fw-bold">{{ total_unpaid|floatformat:2 }} грн</div>
+                            <div class="h4 mb-0 text-danger fw-bold">{{ "%.2f"|format(total_unpaid) }} грн</div>
                         </div>
                     </div>
                 </div>
@@ -318,7 +322,7 @@
                                         <i class="bi bi-pencil"></i>
                                     </button>
 
-                                    <a href="{% url 'taxrecord_delete' record.id %}"
+                                    <a href="{{ url_for('taxrecord_delete', pk=record.id) }}"
                                        class="btn btn-sm btn-outline-danger"
                                        onclick="return confirm('Видалити цей запис?')">
                                         <i class="bi bi-trash3"></i>
@@ -327,11 +331,11 @@
                             {% else %}
                                 <td class="text-center align-middle">
                                     {% if not record.is_paid %}
-                                        <a href="{% url 'pay_tax' record.id %}" class="btn btn-sm btn-success shadow-sm">
+                                        <a href="{{ url_for('pay_tax', record_id=record.id) }}" class="btn btn-sm btn-success shadow-sm">
                                             <i class="bi bi-credit-card me-1"></i> Сплатити
                                         </a>
                                     {% else %}
-                                        <a href="{% url 'download_receipt' record.id %}"
+                                        <a href="{{ url_for('download_receipt', pk=record.id) }}"
                                            class="btn btn-sm btn-outline-danger shadow-sm d-inline-flex align-items-center"
                                            title="Завантажити квитанцію про сплату">
                                             <i class="bi bi-file-earmark-pdf-fill me-2"></i>
@@ -342,7 +346,7 @@
                             {% endif %}
                         </td>
                     </tr>
-                    {% empty %}
+                    {% else %}
                     <tr><td colspan="5" class="text-center py-4 text-muted">Немає жодних нарахувань.</td></tr>
                     {% endfor %}
                 </tbody>
@@ -352,8 +356,8 @@
         {% if user.is_superuser %}
         <div class="admin-section shadow-sm border-primary" style="background-color: #e7f1ff; border-left-color: var(--gov-blue);">
             <h3 class="h5 mb-3 text-primary"><i class="bi bi-calculator"></i> Нове нарахування (Адмін)</h3>
-            <form action="{% url 'taxrecord_add' %}" method="post" class="row g-3">
-                {% csrf_token %}
+            <form action="{{ url_for('taxrecord_add') }}" method="post" class="row g-3">
+                {{ tr_form.hidden_tag() }}
                 <div class="col-md-4">
                     <select name="taxpayer_id" class="form-select" required>
                         {% for tp in taxpayers %}
@@ -380,13 +384,13 @@
         {% else %}
         <div class="user-section shadow-sm p-4 mt-4 bg-white border-top border-primary border-4 mb-5">
             <h3 class="h5 mb-3" style="color: var(--gov-blue);"><i class="bi bi-pencil-square"></i> Подати декларацію</h3>
-            <form action="{% url 'declare_tax' %}" method="post" class="row g-3">
-                {% csrf_token %}
+            <form action="{{ url_for('declare_tax') }}" method="post" class="row g-3">
+                {{ tr_form.hidden_tag() }}
                 <div class="col-md-6">
                     <select name="tax_type_id" class="form-select" required>
                         <option value="">-- Оберіть тип податку --</option>
                         {% for tt in tax_types %}
-                        <option value="{{ tt.id }}">{{ tt.name }} ({{ tt.rate }}%)</option>
+                            <option value="{{ tt.id }}">{{ tt.name }} ({{ tt.rate }}%)</option>
                         {% endfor %}
                     </select>
                 </div>
@@ -402,7 +406,7 @@
 
         <footer class="footer">
             <p>© 2026 Державна податкова служба України.</p>
-            <p>Лабораторна робота №4 | Варіант 12 | Виконала: Сахно Маргарита | Група: ІО-35</p>
+            <p>Лабораторна робота №6 | Варіант 12 | Виконала: Сахно Маргарита | Група: ІО-35</p>
         </footer>
     </div>
 
@@ -415,9 +419,8 @@
                 </div>
                 <div class="modal-body">
                     <form id="editTaxpayerForm" method="post">
-                        {% csrf_token %}
-                        <div id="modalFormBody">
-                            </div>
+                        {{ tp_form.hidden_tag() }}
+                        <div id="modalFormBody"></div>
                         <button type="submit" class="btn btn-primary w-100 mt-3" style="background-color: #003366;">Зберегти зміни</button>
                     </form>
                 </div>
@@ -434,9 +437,8 @@
                 </div>
                 <div class="modal-body">
                     <form id="editRecordForm" method="post">
-                        {% csrf_token %}
-                        <div id="modalRecordFormBody">
-                            </div>
+                        {{ tr_form.hidden_tag() }}
+                        <div id="modalRecordFormBody"></div>
                         <button type="submit" class="btn btn-success w-100 mt-3">Оновити запис</button>
                     </form>
                 </div>
@@ -445,6 +447,7 @@
     </div>
 
 <script>
+    // Твій JS залишається без змін, він працює коректно
     const searchInput = document.getElementById('searchInput');
     if (searchInput) {
         searchInput.addEventListener('keyup', function() {
@@ -495,10 +498,8 @@
             const name = this.getAttribute('data-name');
             const tin = this.getAttribute('data-tin');
 
-            // Оновлюємо URL форми (шлях до нашої в'юхи)
-            document.getElementById('editTaxpayerForm').action = `/taxpayer/edit/${id}/`;
+            document.getElementById('editTaxpayerForm').action = `/taxpayer/edit/${id}`;
 
-            // Заповнюємо поля (використовуємо HTML нашого tp_form, але з даними)
             document.getElementById('modalFormBody').innerHTML = `
                 <div class="mb-3">
                     <label class="form-label">ПІБ Платника</label>
@@ -512,14 +513,13 @@
         });
     });
 
-    // Обробка для нарахувань
     document.querySelectorAll('.edit-record-button').forEach(button => {
         button.addEventListener('click', function() {
             const id = this.getAttribute('data-id');
             const taxpayerId = this.getAttribute('data-taxpayer');
             const typeId = this.getAttribute('data-type');
 
-            document.getElementById('editRecordForm').action = `/record/edit/${id}/`;
+            document.getElementById('editRecordForm').action = `/record/edit/${id}`;
 
             document.getElementById('modalRecordFormBody').innerHTML = `
                 <div class="mb-3">
@@ -545,7 +545,6 @@
             `;
         });
     });
-
 </script>
 </body>
 </html>
