@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <style>
+        @page { size: A4; margin: 1.5cm; }
+
+        body {
+            font-family: Times, serif; /* Використовуємо твій налаштований шрифт */
+            color: #222;
+            line-height: 1.3;
+            font-size: 11px;
+        }
+
+        .container {
+            width: 100%;
+            padding: 20px;
+        }
+
+        /* Шапка з назвою установи */
+        .header {
+            text-align: center;
+            border-bottom: 2px solid #003366;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+        }
+        .header h1 { font-size: 16px; margin: 0; color: #003366; text-transform: uppercase; }
+        .header p { font-size: 9px; margin: 5px 0; color: #555; }
+
+        /* Заголовок документа */
+        .doc-title {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .doc-title h2 { font-size: 14px; margin: 0; font-weight: bold; }
+
+        /* Основна таблиця з даними */
+        .info-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 30px;
+        }
+        .info-table td {
+            padding: 10px 5px;
+            border-bottom: 1px solid #e0e0e0;
+            vertical-align: top;
+        }
+        .label {
+            color: #666;
+            width: 35%;
+            font-style: italic;
+        }
+        .value {
+            font-weight: bold;
+            width: 65%;
+        }
+
+        /* Блок суми */
+        .amount-row {
+            background-color: #f9f9f9;
+            padding: 15px;
+            text-align: right;
+            border-top: 1px solid #003366;
+            margin-top: 20px;
+        }
+        .amount-label { font-size: 10px; color: #666; }
+        .amount-val {
+            font-size: 20px;
+            color: #b22222; /* Темно-червоний */
+            font-weight: bold;
+        }
+
+        /* Печатка "СПЛАЧЕНО" */
+        .stamp-container {
+            position: relative;
+            height: 120px;
+        }
+        .stamp {
+            position: absolute;
+            top: 20px;
+            left: 50px;
+            border: 3px solid #28a745;
+            color: #28a745;
+            padding: 10px 25px;
+            font-size: 24px;
+            font-weight: bold;
+            text-transform: uppercase;
+            border-radius: 8px;
+            transform: rotate(-12deg);
+            opacity: 0.8;
+        }
+        .signature-info {
+            position: absolute;
+            top: 35px;
+            left: 200px;
+            font-size: 8px;
+            color: #888;
+        }
+
+        /* Футер */
+        .footer {
+            margin-top: 50px;
+            border-top: 1px solid #eee;
+            padding-top: 10px;
+            font-size: 8px;
+            text-align: center;
+            color: #999;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Державна податкова служба України</h1>
+            <p>Електронний сервіс "Електронний кабінет" | Сформовано: {{ record.paid_at.strftime('%d.%m.%Y %H:%M:%S') if record.paid_at else '---' }}</p>
+        </div>
+
+        <div class="doc-title">
+            <h2>КВИТАНЦІЯ ПРО ОПЛАТУ № {{ record.id }}</h2>
+            <p style="font-size: 9px;">ID транзакції: TAX-{{ "%06d"|format(record.id) }}-{{ record.taxpayer.tin[:4] }}</p>
+        </div>
+
+        <table class="info-table">
+            <tr>
+                <td class="label">Отримувач:</td>
+                <td class="value">ГУ ДПС у м. Києві (р-н Шевченківський)</td>
+            </tr>
+            <tr>
+                <td class="label">Код ЄДРПОУ отримувача:</td>
+                <td class="value">43141267</td>
+            </tr>
+            <tr>
+                <td class="label">Платник:</td>
+                <td class="value">{{ record.taxpayer.full_name }}</td>
+            </tr>
+            <tr>
+                <td class="label">РНОКПП (ІПН):</td>
+                <td class="value">{{ record.taxpayer.tin }}</td>
+            </tr>
+            <tr>
+                <td class="label">Призначення платежу:</td>
+                <td class="value">*;101;{{ record.taxpayer.tin }};Сплата {{ record.tax_type.name }} за 2026 рік;;;</td>
+            </tr>
+        </table>
+
+        <div class="amount-row">
+            <span class="amount-label">РАЗОМ ДО СПЛАТИ:</span><br>
+            <span class="amount-val">{{ "%.2f"|format(record.amount) }} ГРН</span>
+        </div>
+
+        <div class="stamp-container">
+            <div class="stamp">Сплачено</div>
+            <div class="signature-info">
+                Електронний підпис КЕП: ПІДТВЕРДЖЕНО<br>
+                Сертифікат: № 0084B2003C51A1<br>
+                Дата накладання: {{ record.paid_at.strftime('%d.%m.%Y') if record.paid_at else '' }}
+            </div>
+        </div>
+
+        <div class="footer">
+            Ця квитанція є документом, що підтверджує факт здійснення платежу в розумінні Закону України "Про платіжні послуги".<br>
+            Зберігайте цей документ для підтвердження розрахунків з бюджетом.
+        </div>
+    </div>
+</body>
+</html>

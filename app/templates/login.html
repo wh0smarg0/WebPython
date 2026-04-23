@@ -13,29 +13,30 @@
         }
 
         body {
-            /* Градієнт та легкий візерунок на фоні для солідності */
             background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
             display: flex;
             align-items: center;
             justify-content: center;
-            height: 100vh;
+            min-height: 100vh; /* Змінив на min-height */
             margin: 0;
+            padding: 20px; /* Додав відступ для мобільних */
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
         }
 
+        /* Цей контейнер тепер працює правильно */
         .login-container {
             width: 100%;
             max-width: 420px;
-            perspective: 1000px;
         }
 
         .login-card {
             background: white;
             border: none;
-            border-radius: 0;
+            border-radius: 4px; /* Легке закруглення */
             border-top: 5px solid var(--gov-gold);
             box-shadow: 0 15px 35px rgba(0, 51, 102, 0.15);
             padding: 40px;
+            width: 100%; /* Картка займає всю ширину контейнера */
         }
 
         .gov-logo {
@@ -51,12 +52,6 @@
             letter-spacing: 1px;
             font-size: 1.2rem;
             margin-bottom: 5px;
-        }
-
-        .login-subtitle {
-            font-size: 0.85rem;
-            color: #6c757d;
-            margin-bottom: 30px;
         }
 
         .form-label {
@@ -77,11 +72,6 @@
             font-size: 0.95rem;
         }
 
-        .form-control:focus {
-            box-shadow: none;
-            border-color: #dee2e6;
-        }
-
         .btn-gov {
             background-color: var(--gov-blue);
             color: white;
@@ -96,14 +86,6 @@
             background-color: #002244;
             color: white;
             transform: translateY(-2px);
-            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
-        }
-
-        .footer-text {
-            font-size: 0.75rem;
-            color: #adb5bd;
-            text-align: center;
-            margin-top: 20px;
         }
     </style>
 </head>
@@ -111,37 +93,46 @@
 
     <div class="login-container">
         <div class="login-card">
-            <div class="text-center">
-                <div class="gov-logo">
-                    <i class="bi bi-shield-lock-fill"></i>
-                </div>
+            <div class="text-center mb-4">
+                <div class="gov-logo"><i class="bi bi-shield-lock-fill"></i></div>
                 <h1 class="login-title">ДПС УКРАЇНИ</h1>
-                <p class="login-subtitle">Електронний кабінет платника податків</p>
+                <p class="text-muted small">Електронний кабінет платника податків</p>
             </div>
 
-            {% if form.errors %}
-                <div class="alert alert-danger d-flex align-items-center" role="alert" style="font-size: 0.85rem;">
-                    <i class="bi bi-exclamation-triangle-fill me-2"></i>
-                    <div>Невірний логін або пароль.</div>
-                </div>
-            {% endif %}
+            {% with messages = get_flashed_messages(with_categories=true) %}
+              {% if messages %}
+                {% for category, message in messages %}
+                    {% set alert_class = 'danger' if category in ['error', 'message'] else category %}
+                    <div class="alert alert-{{ alert_class }} d-flex align-items-center mb-3" role="alert" style="font-size: 0.85rem;">
+                        <i class="bi bi-info-circle-fill me-2"></i>
+                        <div>{{ message }}</div>
+                    </div>
+                {% endfor %}
+              {% endif %}
+            {% endwith %}
 
-            <form method="post">
-                {% csrf_token %}
+            <form action="{{ url_for('main.login') }}" method="post">
+                {{ form.hidden_tag() }}
+
                 <div class="mb-3">
                     <label class="form-label">Ідентифікатор (Логін)</label>
                     <div class="input-group">
                         <span class="input-group-text"><i class="bi bi-person"></i></span>
-                        <input type="text" name="username" class="form-control" placeholder="Введіть ваш логін" required autocomplete="username">
+                        {{ form.username(class="form-control", placeholder="Введіть ваш логін") }}
                     </div>
                 </div>
 
-                <div class="mb-4">
+                <div class="mb-3">
                     <label class="form-label">Пароль</label>
                     <div class="input-group">
                         <span class="input-group-text"><i class="bi bi-key"></i></span>
-                        <input type="password" name="password" class="form-control" placeholder="Введіть пароль" required autocomplete="current-password">
+                        {{ form.password(class="form-control", placeholder="Введіть пароль") }}
                     </div>
+                </div>
+
+                <div class="mb-4 form-check">
+                    {{ form.remember(class="form-check-input") }}
+                    <label class="form-check-label small text-muted">Запам'ятати мене</label>
                 </div>
 
                 <button type="submit" class="btn btn-gov w-100 shadow-sm">
@@ -149,13 +140,10 @@
                 </button>
             </form>
 
-            <div class="footer-text">
-                <i class="bi bi-info-circle me-1"></i> Використовуйте захищене з'єднання
+            <div class="text-center mt-4 text-muted" style="font-size: 0.75rem;">
+                <p>© 2026 Державна податкова служба України</p>
             </div>
         </div>
-        <p class="text-center mt-3" style="font-size: 0.8rem; color: #6c757d;">
-            © 2026 Всі права захищено. Державна податкова служба України
-        </p>
     </div>
 
 </body>
