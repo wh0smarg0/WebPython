@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Центр керування доступом — ДПС</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <style>
+        :root { --gov-blue: #003366; --gov-gold: #ffcc00; }
+        body { background-color: #f8f9fa; font-family: 'Segoe UI', sans-serif; }
+
+        .gov-header {
+            background-color: var(--gov-blue);
+            color: white;
+            padding: 15px 0;
+            border-bottom: 4px solid var(--gov-gold);
+            margin-bottom: 30px;
+        }
+
+        .main-card {
+            background: white;
+            border-radius: 0;
+            border: 1px solid #dee2e6;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+            padding: 25px;
+        }
+
+        /* Стилізація вкладок */
+        .nav-tabs .nav-link { color: var(--gov-blue); border-radius: 0; font-weight: 600; }
+        .nav-tabs .nav-link.active { border-top: 3px solid var(--gov-blue); color: var(--gov-blue); }
+
+        .table thead {
+            background-color: #f1f4f8;
+            color: var(--gov-blue);
+            border-top: 2px solid var(--gov-blue);
+        }
+
+        .status-badge { font-size: 0.75rem; padding: 5px 10px; border-radius: 12px; }
+        .audit-timestamp { font-family: 'Courier New', monospace; font-size: 0.85rem; }
+    </style>
+</head>
+<body>
+
+    <header class="gov-header shadow-sm">
+        <div class="container d-flex justify-content-between align-items-center">
+            <div class="d-flex align-items-center gap-3">
+                <i class="bi bi-shield-lock" style="font-size: 2rem; color: var(--gov-gold);"></i>
+                <div>
+                    <h1 class="h5 mb-0 text-uppercase fw-bold">Панель адміністратора</h1>
+                    <p class="mb-0 small opacity-75">Центр керування та аудиту</p>
+                </div>
+            </div>
+            <a href="{{ url_for('main.index') }}" class="btn btn-outline-light btn-sm">
+                <i class="bi bi-arrow-left"></i> На головну
+            </a>
+        </div>
+    </header>
+
+    <div class="container">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+          {% if messages %}
+            {% for category, message in messages %}
+                <div class="alert alert-{{ category if category != 'error' else 'danger' }} alert-dismissible fade show shadow-sm" role="alert">
+                    {{ message }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                </div>
+            {% endfor %}
+          {% endif %}
+        {% endwith %}
+
+        <ul class="nav nav-tabs mb-4" id="adminTabs" role="tablist">
+            <li class="nav-item">
+                <button class="nav-link active" id="users-tab" data-bs-toggle="tab" data-bs-target="#users-pane" type="button">
+                    <i class="bi bi-people-fill me-2"></i>Користувачі
+                </button>
+            </li>
+            <li class="nav-item">
+                <button class="nav-link" id="audit-tab" data-bs-toggle="tab" data-bs-target="#audit-pane" type="button">
+                    <i class="bi bi-clock-history me-2"></i>Історія дій
+                </button>
+            </li>
+        </ul>
+
+        <div class="tab-content" id="adminTabsContent">
+
+            <div class="tab-pane fade show active" id="users-pane" role="tabpanel">
+                <div class="d-flex justify-content-between align-items-center mb-3 px-2">
+                    <h2 class="h5 mb-0 text-muted">Реєстр користувачів системи</h2>
+                    <span class="badge bg-secondary">Всього: {{ users|length }}</span>
+                </div>
+                <div class="main-card">
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle">
+                            <thead>
+                                <tr>
+                                    <th>ID</th>
+                                    <th>ПІБ (Name)</th>
+                                    <th>Логін</th>
+                                    <th>Email</th>
+                                    <th>Роль</th>
+                                    <th class="text-center">Дії</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for user in users %}
+                                <tr>
+                                    <td><code>{{ user.id }}</code></td>
+                                    <td><i class="bi bi-person-circle me-2 text-primary"></i>{{ user.name }}</td>
+                                    <td><span class="fw-bold">{{ user.username }}</span></td>
+                                    <td>{{ user.email }}</td>
+                                    <td>
+                                        {% if user.is_admin %}
+                                            <span class="badge bg-danger status-badge">Адмін</span>
+                                        {% else %}
+                                            <span class="badge bg-primary status-badge">Платник</span>
+                                        {% endif %}
+                                    </td>
+                                    <td class="text-center">
+                                        {% if user.username != 'admin' %}
+                                        <a href="{{ url_for('main.delete_user', user_id=user.id) }}"
+                                           class="btn btn-sm btn-outline-danger"
+                                           onclick="return confirm('Ви впевнені?')">
+                                            <i class="bi bi-trash"></i>
+                                        </a>
+                                        {% else %}
+                                        <span class="text-muted small italic">Системний</span>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <div class="tab-pane fade" id="audit-pane" role="tabpanel">
+                <div class="d-flex justify-content-between align-items-center mb-3 px-2">
+                    <h2 class="h5 mb-0 text-muted">Журнал системних подій</h2>
+                    <i class="bi bi-info-circle text-muted" title="Останні 50 подій"></i>
+                </div>
+                <div class="main-card">
+                    <div class="table-responsive">
+                        <table class="table table-sm table-striped align-middle">
+                            <thead class="table-dark">
+                                <tr>
+                                    <th style="width: 180px;">Час події</th>
+                                    <th>Користувач</th>
+                                    <th>Дія</th>
+                                    <th>Деталі</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for log in logs %}
+                                <tr>
+                                    <td class="audit-timestamp text-muted">{{ log.timestamp.strftime('%d.%m.%Y %H:%M:%S') }}</td>
+                                    <td>
+                                        <span class="badge bg-light text-dark border">
+                                            <i class="bi bi-person me-1"></i>{{ log.actor.username if log.actor else 'Система' }}
+                                        </span>
+                                    </td>
+                                    <td><span class="fw-bold text-primary">{{ log.action }}</span></td>
+                                    <td class="small italic">{{ log.details }}</td>
+                                </tr>
+                                {% else %}
+                                <tr>
+                                    <td colspan="4" class="text-center py-5 text-muted">
+                                        <i class="bi bi-journal-x fs-1 d-block mb-2"></i>
+                                        Історія дій поки порожня
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+
+        <footer class="mt-5 text-center text-muted small pb-4">
+            © 2026 Електронний кабінет ДПС | Адмін-панель
+        </footer>
+    </div>
+
+</body>
+</html>

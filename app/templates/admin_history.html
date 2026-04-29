@@ -1,0 +1,22 @@
+<div class="main-card">
+    <table class="table table-sm table-hover">
+        <thead class="table-light">
+            <tr>
+                <th>Час</th>
+                <th>Користувач</th>
+                <th>Дія</th>
+                <th>Деталі</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for log in logs %}
+            <tr>
+                <td class="small">{{ log.timestamp.strftime('%d.%m.%Y %H:%M:%S') }}</td>
+                <td><span class="badge bg-secondary">{{ log.actor.username }}</span></td>
+                <td class="fw-bold">{{ log.action }}</td>
+                <td class="text-muted small">{{ log.details }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>

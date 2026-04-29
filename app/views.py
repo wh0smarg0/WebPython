@@ -1,15 +1,19 @@
 from flask import Blueprint, render_template, request, redirect, url_for, flash, make_response
+from flask_mail import Message
 from datetime import datetime
 import csv
 from io import StringIO
+import random
 
-# Імпорти для аутентифікації [cite: 715]
+# Імпорти для аутентифікації
 from flask_login import login_user, current_user, logout_user, login_required
 
-# Імпорти з нашого пакета (використовуємо відносні імпорти) [cite: 713-716]
+# Імпорти з пакета
 from . import db
-from .models import User, Taxpayer, TaxRecord, TaxType
+from .models import User, Taxpayer, TaxRecord, TaxType, AuditLog
 from .forms import TaxpayerForm, TaxRecordForm, LoginForm
+from . import mail
+from .forms import RegistrationForm
 
 from xhtml2pdf import pisa
 from io import BytesIO
@@ -23,6 +27,13 @@ from reportlab.pdfbase.ttfonts import TTFont
 
 # Створюємо Blueprint замість використання app безпосередньо
 main = Blueprint('main', __name__)
+
+def log_action(action, details=None, user_id=None):
+    # Якщо user_id не передано, беремо поточного юзера (для оплати тощо)
+    # Якщо ми в реєстрації — передамо ID вручну
+    target_id = user_id if user_id else current_user.id
+    log = AuditLog(user_id=target_id, action=action, details=details)
+    db.session.add(log)
 
 # --- АВТОРИЗАЦІЯ ---
 
@@ -59,22 +70,29 @@ def logout():
 @main.route('/')
 @login_required
 def index():
-    # 1. Визначаємо список платників залежно від ролі
-    if current_user.username == 'admin':
+    # Визначаємо дані залежно від ролі (Адмін бачить все, Юзер - своє)
+    if current_user.is_admin:
         taxpayers = Taxpayer.query.all()
+        records = TaxRecord.query.all()
     else:
-        # Тільки ті, що належать поточному юзеру
         taxpayers = Taxpayer.query.filter_by(user_id=current_user.id).all()
+        tp_ids = [t.id for t in taxpayers]
+        records = TaxRecord.query.filter(TaxRecord.taxpayer_id.in_(tp_ids)).all() if tp_ids else []
 
-    # 2. Отримуємо ID платників, щоб відфільтрувати їхні нарахування
-    tp_ids = [t.id for t in taxpayers]
-    records = TaxRecord.query.filter(TaxRecord.taxpayer_id.in_(tp_ids)).all() if tp_ids else []
-
+    # Отримуємо типи податків для виводу та форми
     tax_types = TaxType.query.all()
+
+    # Ініціалізуємо форми
     tp_form = TaxpayerForm()
     tr_form = TaxRecordForm()
 
-    # Розрахунок загального боргу для користувача
+    # Заповнюємо випадаючі списки (choices)
+    tr_form.taxpayer_id.choices = [(t.id, t.full_name) for t in taxpayers]
+
+    # Список типів податків: назва + ставка для зручності
+    tr_form.tax_type_id.choices = [(t.id, f"{t.name} ({t.rate}%)") for t in tax_types]
+
+    # Розрахунок загального боргу
     total_unpaid = sum(r.amount for r in records if not r.is_paid)
 
     return render_template('index.html',
@@ -84,6 +102,7 @@ def index():
                            tp_form=tp_form,
                            tr_form=tr_form,
                            total_unpaid=total_unpaid)
+
 
 # --- УПРАВЛІННЯ ПЛАТНИКАМИ (CRUD) ---
 
@@ -96,6 +115,8 @@ def taxpayer_add():
         db.session.add(new_tp)
         db.session.commit()
         flash('Платника успішно додано!', 'success')
+
+    log_action("Новий платник", f"Додано: {form.full_name.data}")
     return redirect(url_for('main.index'))
 
 
@@ -153,6 +174,9 @@ def taxrecord_add():
 
     new_record = TaxRecord(taxpayer_id=tp_id, tax_type_id=tt_id, amount=tax_amount)
     db.session.add(new_record)
+
+    log_action("Створення нарахування", f"Сума: {tax_amount:.2f} грн для ID платника {tp_id}")
+
     db.session.commit()
     flash('Нарахування додано!', 'success')
     return redirect(url_for('main.index'))
@@ -172,6 +196,7 @@ def record_edit(pk):
         record.amount = float(income_val) * (tax_type.rate / 100)
         db.session.commit()
         flash('Запис оновлено та суму перераховано!', 'success')
+
     return redirect(url_for('main.index'))
 
 @main.route('/record/delete/<int:pk>')
@@ -192,8 +217,22 @@ def pay_tax(record_id):
     record.is_paid = True
     record.paid_at = datetime.utcnow()
     db.session.commit()
-    flash(f'Суму {record.amount} грн сплачено!', 'success')
+
+    # --- НАДСИЛАННЯ ЛИСТА ---
+    try:
+        msg = Message(f"Підтвердження оплати податку №{record.id}",
+                      recipients=[current_user.email])
+        msg.body = f"Шановний(а) {current_user.name}!\n\n" \
+                   f"Ваш платіж за '{record.tax_type.name}' на суму {record.amount:.2f} грн успішно прийнято.\n" \
+                   f"Ви можете завантажити квитанцію в особистому кабінеті."
+        mail.send(msg)
+        flash(f'Суму {record.amount} грн сплачено, підтвердження надіслано на {current_user.email}!', 'success')
+    except Exception as e:
+        flash(f'Платіж прийнято, але не вдалося надіслати лист: {str(e)}', 'warning')
+
+    log_action("Оплата податку", f"Запис #{record_id} успішно сплачено.")
     return redirect(url_for('main.index'))
+
 
 @main.route('/export-csv')
 @login_required
@@ -287,3 +326,97 @@ def taxtype_add():
         flash('Помилка: заповніть усі поля для нової ставки', 'danger')
 
     return redirect(url_for('main.index'))
+
+
+@main.route('/admin/users')
+@login_required
+def admin_users():
+    if not current_user.is_admin:
+        flash("У вас немає прав доступу!", "danger")
+        return redirect(url_for('main.index'))
+
+    users = User.query.all()
+    # Витягуємо логи
+    logs = AuditLog.query.order_by(AuditLog.timestamp.desc()).limit(50).all()
+
+    # ВАЖЛИВО: додай logs=logs у рендер!
+    return render_template('admin_users.html', users=users, logs=logs)
+
+
+@main.route('/admin/user/delete/<int:user_id>')
+@login_required
+def delete_user(user_id):
+    if not current_user.is_admin:
+        return redirect(url_for('main.index'))
+
+    user = User.query.get_or_404(user_id)
+    if user.username == 'admin':
+        flash("Головного адміністратора не можна видалити!", "danger")
+    else:
+        db.session.delete(user)
+        db.session.commit()
+        flash(f"Користувача {user.username} видалено.", "success")
+    return redirect(url_for('admin_users'))
+
+
+@main.route('/register/', methods=['GET', 'POST'])
+def register():
+    if current_user.is_authenticated:
+        return redirect(url_for('main.index'))
+
+    form = RegistrationForm()
+    if form.validate_on_submit():
+        # 1. Створюємо об'єкт користувача
+        user = User(
+            name=form.name.data,
+            username=form.username.data,
+            email=form.email.data
+        )
+        user.set_password(form.password.data)
+
+        # Перевірка на права адміністратора
+        if user.username.lower() == 'admin':
+            user.is_admin = True
+
+        db.session.add(user)
+        db.session.flush()  # Отримуємо ID користувача для зв'язку
+
+        log_action("Реєстрація", f"Новий користувач: {user.username}", user_id=user.id)
+
+        db.session.commit()
+
+        # 2. Логіка тільки для звичайних користувачів (НЕ адмінів)
+        if not user.is_admin:
+            # Генеруємо ІПН
+            auto_tin = ''.join([str(random.randint(0, 9)) for _ in range(10)])
+
+            # Перевірка на унікальність ІПН
+            while Taxpayer.query.filter_by(tin=auto_tin).first():
+                auto_tin = ''.join([str(random.randint(0, 9)) for _ in range(10)])
+
+            # Створюємо профіль платника
+            new_taxpayer = Taxpayer(
+                full_name=user.name,
+                tin=auto_tin,
+                user_id=user.id
+            )
+            db.session.add(new_taxpayer)
+            flash(f'Акаунт створено! Ваш автоматичний ІПН: {auto_tin}. Використовуйте логін для входу.', 'success')
+        else:
+            # Повідомлення суто для адміна
+            flash('Адміністратора системи успішно зареєстровано!', 'success')
+
+        db.session.commit()
+        return redirect(url_for('main.login'))
+
+    return render_template('register.html', form=form)
+
+
+@main.route('/admin/history')
+@login_required
+def admin_history():
+    if not current_user.is_admin:
+        return redirect(url_for('main.index'))
+
+    logs = AuditLog.query.order_by(AuditLog.timestamp.desc()).all()
+    return render_template('admin_history.html', logs=logs)

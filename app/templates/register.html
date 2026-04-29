@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Реєстрація — Електронний кабінет ДПС</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+    <style>
+        :root {
+            --gov-blue: #003366;
+            --gov-gold: #ffcc00;
+        }
+
+        body {
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            margin: 0;
+            padding: 20px;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        .login-container {
+            width: 100%;
+            max-width: 500px; /* Трохи ширше для форми реєстрації */
+        }
+
+        .login-card {
+            background: white;
+            border: none;
+            border-radius: 4px;
+            border-top: 5px solid var(--gov-gold);
+            box-shadow: 0 15px 35px rgba(0, 51, 102, 0.15);
+            padding: 40px;
+        }
+
+        .gov-logo { font-size: 2.5rem; color: var(--gov-blue); }
+        .login-title { color: var(--gov-blue); font-weight: 700; text-transform: uppercase; font-size: 1.1rem; }
+        .form-label { font-size: 0.8rem; font-weight: 600; color: var(--gov-blue); margin-bottom: 4px; }
+        .input-group-text { background-color: #f8f9fa; border-right: none; color: #adb5bd; }
+        .form-control { border-left: none; padding: 10px; font-size: 0.9rem; }
+
+        .btn-gov {
+            background-color: var(--gov-blue);
+            color: white;
+            padding: 12px;
+            font-weight: 600;
+            border-radius: 0;
+            border: none;
+        }
+        .btn-gov:hover { background-color: #002244; color: white; }
+    </style>
+</head>
+<body>
+
+    <div class="login-container">
+        <div class="login-card">
+            <div class="text-center mb-4">
+                <div class="gov-logo"><i class="bi bi-person-plus-fill"></i></div>
+                <h1 class="login-title">СТВОРЕННЯ АКАУНТА</h1>
+                <p class="text-muted small">Реєстрація у системі «Облік платників»</p>
+            </div>
+
+            <form action="{{ url_for('main.register') }}" method="post">
+                {{ form.hidden_tag() }}
+
+                <div class="row">
+                    <div class="col-md-12 mb-3">
+                        <label class="form-label">Повне ім'я</label>
+                        <div class="input-group">
+                            <span class="input-group-text"><i class="bi bi-card-text"></i></span>
+                            {{ form.name(class="form-control", placeholder="Іванов Іван Іванович") }}
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label">Логін</label>
+                        <div class="input-group">
+                            <span class="input-group-text"><i class="bi bi-person"></i></span>
+                            {{ form.username(class="form-control", placeholder="Логін") }}
+                        </div>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label">Електронна пошта</label>
+                        <div class="input-group">
+                            <span class="input-group-text"><i class="bi bi-envelope"></i></span>
+                            {{ form.email(class="form-control", placeholder="mail@example.com") }}
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label">Пароль</label>
+                        <div class="input-group">
+                            <span class="input-group-text"><i class="bi bi-key"></i></span>
+                            {{ form.password(class="form-control", placeholder="••••••••") }}
+                        </div>
+                    </div>
+                    <div class="col-md-6 mb-4">
+                        <label class="form-label">Підтвердження</label>
+                        <div class="input-group">
+                            <span class="input-group-text"><i class="bi bi-shield-check"></i></span>
+                            {{ form.confirm_password(class="form-control", placeholder="••••••••") }}
+                        </div>
+                    </div>
+                </div>
+
+                <button type="submit" class="btn btn-gov w-100 shadow-sm mb-3">
+                    ЗАРЕЄСТРУВАТИСЯ
+                </button>
+
+                <div class="text-center">
+                    <a href="{{ url_for('main.login') }}" class="text-decoration-none small" style="color: var(--gov-blue);">
+                        Вже маю акаунт — Увійти
+                    </a>
+                </div>
+            </form>
+        </div>
+    </div>
+
+</body>
+</html>
