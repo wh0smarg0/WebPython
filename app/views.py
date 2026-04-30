@@ -39,18 +39,18 @@ def log_action(action, details=None, user_id=None):
 
 @main.route('/login/', methods=['GET', 'POST'])
 def login():
-    # Якщо користувач вже авторизований, не показуємо форму [cite: 618, 727]
+    # Якщо користувач вже авторизований, не показуємо форму
     if current_user.is_authenticated:
         return redirect(url_for('main.index'))
 
     form = LoginForm()
     if form.validate_on_submit():
-        # Пошук користувача за логіном [cite: 731-732]
+        # Пошук користувача за логіном
         user = User.query.filter_by(username=form.username.data).first()
 
         # Перевірка пароля через хеш [cite: 733]
         if user and user.check_password(form.password.data):
-            login_user(user, remember=form.remember.data) # Вхід [cite: 734]
+            login_user(user, remember=form.remember.data) # Вхід
             flash("Успішний вхід у систему!", "success")
             return redirect(url_for('main.index'))
 
@@ -59,9 +59,9 @@ def login():
     return render_template('login.html', form=form)
 
 @main.route('/logout/')
-@login_required # Доступ тільки для авторизованих [cite: 739]
+@login_required # Доступ тільки для авторизованих
 def logout():
-    logout_user() # Завершення сесії [cite: 741]
+    logout_user() # Завершення сесії
     flash("Ви вийшли з акаунта.", "info")
     return redirect(url_for('main.login'))
 
@@ -89,7 +89,7 @@ def index():
     # Заповнюємо випадаючі списки (choices)
     tr_form.taxpayer_id.choices = [(t.id, t.full_name) for t in taxpayers]
 
-    # Список типів податків: назва + ставка для зручності
+    # Список типів податків: назва + ставка
     tr_form.tax_type_id.choices = [(t.id, f"{t.name} ({t.rate}%)") for t in tax_types]
 
     # Розрахунок загального боргу
@@ -144,9 +144,8 @@ def taxpayer_edit(pk):
         flash('Дані платника успішно оновлено!', 'success')
     except Exception as e:
         db.session.rollback()
-        # Якщо ІПН вже існує, виникне IntegrityError
         flash(f"Помилка при оновленні: можливо, такий ІПН уже існує.", "danger")
-        print(f"Database error: {e}")  # Дивись помилку в терміналі PyCharm
+        print(f"Database error: {e}")
 
     return redirect(url_for('main.index'))
 
@@ -264,12 +263,11 @@ def download_receipt(pk):
     # 1. Реєструємо шрифт у системі ReportLab (це завантажить його в пам'ять)
     font_path = os.path.join(current_app.root_path, 'static', 'fonts', 'times.ttf')
     try:
-        # Реєструємо шрифт під назвою 'Arial'
+        # Реєструємо шрифт під назвою
         pdfmetrics.registerFont(TTFont('Times', font_path))
     except Exception as e:
         return f"Помилка завантаження шрифту: {e}", 500
 
-    # 2. Рендеримо шаблон БЕЗ передачі font_base64 (він нам більше не потрібен!)
     html = render_template('receipt_pdf.html', record=record)
 
     result = BytesIO()
@@ -339,7 +337,6 @@ def admin_users():
     # Витягуємо логи
     logs = AuditLog.query.order_by(AuditLog.timestamp.desc()).limit(50).all()
 
-    # ВАЖЛИВО: додай logs=logs у рендер!
     return render_template('admin_users.html', users=users, logs=logs)
 
 
